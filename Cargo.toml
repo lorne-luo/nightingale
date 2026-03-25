@@ -1,3 +1,5 @@
 [workspace]
 resolver = "3"
 members = ["app-core", "client/src-tauri", "xtask"]
+# Note: nightingale-bevy is an experimental Bevy app that is not yet complete
+# To enable it, add "nightingale-bevy" to members above
