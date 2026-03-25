@@ -182,7 +182,14 @@ fn read_metadata(path: &Path) -> (String, String, String, f64, Option<Vec<u8>>) 
     let artist = tag.artist().map(|s| s.to_string()).unwrap_or_default();
     let album = tag.album().map(|s| s.to_string()).unwrap_or_default();
 
+<<<<<<< Updated upstream:app-core/src/song.rs
     let album_art = tag.pictures().first().map(|pic| pic.data().to_vec());
+=======
+    let album_art = tag
+        .pictures()
+        .first()
+        .map(|pic| Arc::new(pic.data().to_vec()));
+>>>>>>> Stashed changes:src/scanner/metadata.rs
 
     (title, artist, album, duration_secs, album_art)
 }
@@ -283,3 +290,35 @@ fn parse_ffmpeg_duration(s: &str) -> f64 {
         0.0
     }
 }
+<<<<<<< Updated upstream:app-core/src/song.rs
+=======
+
+fn extract_video_thumbnail(ffmpeg: &Path, video_path: &Path) -> Option<Arc<Vec<u8>>> {
+    let output = crate::vendor::silent_command(ffmpeg)
+        .args([
+            "-i",
+            &video_path.to_string_lossy(),
+            "-vframes",
+            "1",
+            "-f",
+            "image2pipe",
+            "-c:v",
+            "mjpeg",
+            "-vf",
+            "scale=300:-1",
+            "-v",
+            "error",
+            "pipe:1",
+        ])
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .output()
+        .ok()?;
+
+    if output.status.success() && !output.stdout.is_empty() {
+        Some(Arc::new(output.stdout))
+    } else {
+        None
+    }
+}
+>>>>>>> Stashed changes:src/scanner/metadata.rs

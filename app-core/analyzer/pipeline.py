@@ -8,6 +8,7 @@ import tempfile
 from whisper_compat import progress
 from stems import separate_stems, separate_stems_uvr
 from transcribe import transcribe_vocals
+from transcribe_groq import transcribe_with_groq
 from align import align_lyrics
 
 
@@ -70,6 +71,8 @@ def transcribe_or_align(
     """Choose between lyrics alignment and full transcription."""
     if lyrics_path and os.path.isfile(lyrics_path):
         print(f"[nightingale:LOG] Using pre-fetched lyrics: {lyrics_path}", flush=True)
+        if callable(whisper_model):
+            whisper_model = whisper_model()
         return align_lyrics(
             lyrics_path, vocals_path, device,
             model_name=model_name,
@@ -77,6 +80,12 @@ def transcribe_or_align(
             whisper_model=whisper_model,
             pre_align_cleanup=pre_align_cleanup,
         )
+
+    if os.environ.get("GROQ_API_KEY"):
+        return transcribe_with_groq(vocals_path)
+
+    if callable(whisper_model):
+        whisper_model = whisper_model()
 
     return transcribe_vocals(
         vocals_path, audio_path, device,
@@ -109,9 +118,6 @@ def run_pipeline(
         audio_path, output_dir, file_hash, separator, device,
         free_gpu_fn=free_gpu_fn,
     )
-
-    if callable(whisper_model):
-        whisper_model = whisper_model()
 
     transcript = transcribe_or_align(
         vocals_path, audio_path, device,

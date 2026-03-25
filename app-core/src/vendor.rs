@@ -24,7 +24,10 @@ pub fn ffmpeg_path() -> PathBuf {
     } else {
         "ffmpeg"
     };
+<<<<<<< Updated upstream:app-core/src/vendor.rs
 
+=======
+>>>>>>> Stashed changes:src/vendor.rs
     vendor_dir().join(name)
 }
 
@@ -273,6 +276,87 @@ pub fn step_download_uv() -> Result<(), String> {
     let _ = std::fs::remove_dir_all(&tmp_dir);
     result?;
 
+<<<<<<< Updated upstream:app-core/src/vendor.rs
+=======
+    send(tx, "uv", "uv ready");
+    Ok(())
+}
+
+// ─── Download helpers ───────────────────────────────────────────────
+
+fn download_to_file(url: &str, dest: &std::path::Path) -> Result<(), String> {
+    let resp = ureq::get(url).call().map_err(|e| e.to_string())?;
+    let mut body = resp.into_body();
+    let mut reader = body.as_reader();
+    let mut file = std::fs::File::create(dest).map_err(|e| e.to_string())?;
+    std::io::copy(&mut reader, &mut file).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+fn extract_archive(archive: &std::path::Path, dest_dir: &std::path::Path) -> Result<(), String> {
+    let name = archive.to_string_lossy();
+
+    let output = if name.ends_with(".tar.xz") {
+        silent_command("tar")
+            .arg("-xJf")
+            .arg(archive)
+            .arg("-C")
+            .arg(dest_dir)
+            .output()
+    } else if name.ends_with(".tar.gz") {
+        silent_command("tar")
+            .arg("-xzf")
+            .arg(archive)
+            .arg("-C")
+            .arg(dest_dir)
+            .output()
+    } else if name.ends_with(".zip") {
+        #[cfg(windows)]
+        {
+            silent_command("tar")
+                .arg("-xf")
+                .arg(archive)
+                .arg("-C")
+                .arg(dest_dir)
+                .output()
+        }
+        #[cfg(not(windows))]
+        {
+            silent_command("unzip")
+                .arg("-o")
+                .arg(archive)
+                .arg("-d")
+                .arg(dest_dir)
+                .output()
+        }
+    } else {
+        return Err(format!("Unknown archive format: {name}"));
+    };
+
+    let output = output.map_err(|e| format!("Failed to run extraction command: {e}"))?;
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(format!("Extraction failed: {stderr}"));
+    }
+    Ok(())
+}
+
+fn find_file_in(dir: &std::path::Path, name: &str) -> Option<PathBuf> {
+    walkdir::WalkDir::new(dir)
+        .into_iter()
+        .flatten()
+        .find(|e| e.file_type().is_file() && e.file_name().to_string_lossy() == name)
+        .map(|e| e.into_path())
+}
+
+fn mark_executable(_path: &std::path::Path) -> Result<(), String> {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::set_permissions(_path, std::fs::Permissions::from_mode(0o755))
+            .map_err(|e| format!("Failed to set permissions: {e}"))?;
+    }
+>>>>>>> Stashed changes:src/vendor.rs
     Ok(())
 }
 
@@ -428,7 +512,11 @@ fn query_cuda_index(nvidia_smi: &str) -> &'static str {
 
     let major = output.ok().filter(|o| o.status.success()).and_then(|o| {
         let text = String::from_utf8_lossy(&o.stdout).trim().to_string();
+<<<<<<< Updated upstream:app-core/src/vendor.rs
         info!("[vendor] GPU compute capability: {text}");
+=======
+        eprintln!("[vendor] GPU compute capability: {text}");
+>>>>>>> Stashed changes:src/vendor.rs
         text.split('.').next().and_then(|m| m.parse::<u32>().ok())
     });
 
@@ -444,6 +532,17 @@ fn query_cuda_index(nvidia_smi: &str) -> &'static str {
 
 pub fn step_install_packages() -> Result<(), String> {
     let gpu = detect_gpu();
+<<<<<<< Updated upstream:app-core/src/vendor.rs
+=======
+    send(
+        tx,
+        "Packages",
+        format!(
+            "Detected compute: {} ({}). Installing PyTorch...",
+            gpu.device, gpu.torch_index
+        ),
+    );
+>>>>>>> Stashed changes:src/vendor.rs
 
     let uv = uv_path();
     let py = python_path();
@@ -466,6 +565,15 @@ pub fn step_install_packages() -> Result<(), String> {
         return Err(format!("Build deps install failed: {stderr}"));
     }
 
+<<<<<<< Updated upstream:app-core/src/vendor.rs
+=======
+    send(
+        tx,
+        "Packages",
+        "Installing Demucs, WhisperX and audio-separator...",
+    );
+
+>>>>>>> Stashed changes:src/vendor.rs
     let pkg_args: Vec<&str> = vec![
         "pip",
         "install",
@@ -499,9 +607,15 @@ pub fn step_install_packages() -> Result<(), String> {
             "torchaudio",
             "--reinstall-package",
             "torchvision",
+<<<<<<< Updated upstream:app-core/src/vendor.rs
             "torch==2.10.0",
             "torchaudio==2.10.0",
             "torchvision==0.25.0",
+=======
+            "torch>=2.0.0",
+            "torchaudio>=2.0.0",
+            "torchvision>=0.15.0",
+>>>>>>> Stashed changes:src/vendor.rs
             "--python",
             &py_str,
             "--index-url",

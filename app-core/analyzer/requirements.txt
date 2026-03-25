@@ -4,3 +4,4 @@ torch==2.10.0
 torchaudio==2.10.0
 audio-separator>=0.25
 scipy>=1.11.0
+groq>=0.20.0
