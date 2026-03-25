@@ -36,6 +36,14 @@ pub fn python_path() -> PathBuf {
     }
 }
 
+pub fn venv_bin_dir() -> PathBuf {
+    if cfg!(windows) {
+        vendor_dir().join("venv").join("Scripts")
+    } else {
+        vendor_dir().join("venv").join("bin")
+    }
+}
+
 pub fn analyzer_dir() -> PathBuf {
     vendor_dir().join("analyzer")
 }
@@ -466,6 +474,7 @@ pub fn step_install_packages() -> Result<(), String> {
         "soundfile",
         "huggingface_hub>=0.27.0",
         audio_sep_pkg,
+        "yt-dlp",
         "--python",
         &py_str,
     ];
