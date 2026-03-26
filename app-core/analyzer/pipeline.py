@@ -11,6 +11,7 @@ from key_detect import detect_key
 from stems import separate_stems, separate_stems_uvr
 from transcribe import transcribe_vocals
 from align import align_lyrics
+from transcribe_groq import transcribe_with_groq
 
 
 def ffmpeg_bin():
@@ -116,6 +117,7 @@ def transcribe_or_align(
     whisper_model=None, pre_align_cleanup=None,
 ):
     """Choose between lyrics alignment and full transcription."""
+    # Priority 1: Use pre-fetched lyrics if available
     if lyrics_path and os.path.isfile(lyrics_path):
         print(f"[nightingale:LOG] Using pre-fetched lyrics: {lyrics_path}", flush=True)
         return align_lyrics(
@@ -126,6 +128,13 @@ def transcribe_or_align(
             pre_align_cleanup=pre_align_cleanup,
         )
 
+    # Priority 2: Use Groq if API key is set
+    if os.environ.get("GROQ_API_KEY"):
+        print("[nightingale:LOG] Using Groq Whisper API", flush=True)
+        return transcribe_with_groq(vocals_path)
+
+    # Priority 3: Fall back to local WhisperX
+    print("[nightingale:LOG] Using local WhisperX", flush=True)
     return transcribe_vocals(
         vocals_path, audio_path, device,
         model_name=model_name,
