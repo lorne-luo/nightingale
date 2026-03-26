@@ -11,7 +11,7 @@ export type Segment = {
   text: string;
   start: number;
   end: number;
-  words: Word[];
+  words?: Word[];  // 改为可选，兼容 Groq segment-only 输出
 };
 
 export type Transcript = {
