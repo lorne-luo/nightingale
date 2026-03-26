@@ -20,7 +20,7 @@ export function splitLongSegments(
 ): Segment[] {
   const result: Segment[] = [];
   for (const seg of segments) {
-    if (seg.words.length <= maxWords) {
+    if (!seg.words || seg.words.length <= maxWords) {
       result.push(seg);
       continue;
     }
