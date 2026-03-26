@@ -264,9 +264,11 @@ function LyricsDisplayImpl({
         nextContainerRef.current.style.display = showCurrent && hasNext ? "" : "none";
 
       updateCountdown(countdownRef.current, showCountdown, timeUntil);
-      // Bridged finished lines are past every word's end, so treating them as
-      // active keeps the already-sung colors instead of dropping to unsung.
-      updateWordSpans(wordRefs.current, seg.words, time, isActive || bridgeShortGap);
+      if (seg.words && seg.words.length > 0) {
+        // Bridged finished lines are past every word's end, so treating them as
+        // active keeps the already-sung colors instead of dropping to unsung.
+        updateWordSpans(wordRefs.current, seg.words, time, isActive || bridgeShortGap);
+      }
     };
 
     if (animate) {
