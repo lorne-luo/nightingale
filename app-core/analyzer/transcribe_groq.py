@@ -1,12 +1,16 @@
 """Groq Whisper API transcription module."""
 
 import os
+import time
+import logging
 from whisper_compat import progress
 
 try:
     from groq import Groq
 except ImportError:
     Groq = None  # Will raise error at runtime if used
+
+logger = logging.getLogger(__name__)
 
 
 def _get_attr(obj, key, default=None):
@@ -39,6 +43,11 @@ def transcribe_with_groq(vocals_path: str) -> dict:
     progress(60, "Calling Groq Whisper API...")
 
     client = Groq(api_key=api_key)
+    audio_size_mb = os.path.getsize(vocals_path) / (1024 * 1024)
+
+    print(f"[nightingale:LOG] [Groq] Starting transcription: file={vocals_path}, size={audio_size_mb:.2f}MB, model=whisper-large-v3-turbo", flush=True)
+    logger.info(f"[Groq] Starting transcription: file={vocals_path}, size={audio_size_mb:.2f}MB, model=whisper-large-v3-turbo")
+    start_time = time.time()
 
     try:
         with open(vocals_path, "rb") as audio_file:
@@ -47,7 +56,13 @@ def transcribe_with_groq(vocals_path: str) -> dict:
                 model="whisper-large-v3-turbo",
                 response_format="verbose_json",
             )
+        elapsed = time.time() - start_time
+        print(f"[nightingale:LOG] [Groq] Transcription completed: duration={elapsed:.2f}s", flush=True)
+        logger.info(f"[Groq] Transcription completed: duration={elapsed:.2f}s")
     except Exception as e:
+        elapsed = time.time() - start_time
+        print(f"[nightingale:LOG] [Groq] Transcription failed: duration={elapsed:.2f}s, error={e}", flush=True)
+        logger.error(f"[Groq] Transcription failed: duration={elapsed:.2f}s, error={e}")
         raise RuntimeError(f"Groq API transcription failed: {e}") from e
 
     progress(85, "Processing Groq response...")

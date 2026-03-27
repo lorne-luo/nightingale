@@ -9,7 +9,6 @@ from gpu import hard_free_gpu, log_vram
 from whisper_compat import progress
 from key_detect import detect_key
 from stems import separate_stems, separate_stems_uvr
-from transcribe import transcribe_vocals
 from align import align_lyrics
 from transcribe_groq import transcribe_with_groq
 
@@ -133,18 +132,8 @@ def transcribe_or_align(
         print("[nightingale:LOG] Using Groq Whisper API", flush=True)
         return transcribe_with_groq(vocals_path)
 
-    # Priority 3: Fall back to local WhisperX
-    print("[nightingale:LOG] Using local WhisperX", flush=True)
-    return transcribe_vocals(
-        vocals_path, audio_path, device,
-        model_name=model_name,
-        beam_size=beam_size,
-        batch_size=batch_size,
-        engine=engine,
-        language_override=language_override,
-        whisper_model=whisper_model,
-        pre_align_cleanup=pre_align_cleanup,
-    )
+    # No transcription available - GROQ_API_KEY required
+    raise RuntimeError("GROQ_API_KEY not set. Cloud transcription is required.")
 
 
 def run_pipeline(
