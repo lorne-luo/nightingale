@@ -234,7 +234,7 @@ export const Actions = ({ registerCallback, focusedSidebarIndex }: ActionsProps)
                   setDropdownOpen(false);
                   setMode("add-from-youtube");
                 }}
-                aria-disabled={!isFolderSource}
+                disabled={!isFolderSource}
                 title={
                   isFolderSource
                     ? undefined
