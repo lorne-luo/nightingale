@@ -1,6 +1,7 @@
 target/
 .env
 .worktree/
+.superpowers/
 
 # Site
 site/node_modules/
