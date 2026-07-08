@@ -10,6 +10,7 @@ from whisper_compat import progress
 from key_detect import detect_key
 from stems import separate_stems, separate_stems_uvr
 from transcribe import transcribe_vocals
+from transcribe_groq import transcribe_with_groq
 from align import align_lyrics
 
 
@@ -125,6 +126,9 @@ def transcribe_or_align(
             whisper_model=whisper_model,
             pre_align_cleanup=pre_align_cleanup,
         )
+
+    if os.environ.get("GROQ_API_KEY"):
+        return transcribe_with_groq(vocals_path)
 
     return transcribe_vocals(
         vocals_path, audio_path, device,
