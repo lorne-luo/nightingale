@@ -1,5 +1,6 @@
 target/
 .env
+.worktree/
 
 # Site
 site/node_modules/
