@@ -1,6 +1,7 @@
 mod analyzer;
 mod cache;
 mod config;
+mod downloader;
 mod error;
 mod library_db;
 mod library_menu;
