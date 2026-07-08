@@ -100,6 +100,72 @@ pub fn search_youtube(query: &str, limit: usize) -> Vec<YoutubeSearchResult> {
         .collect()
 }
 
+use std::path::{Path, PathBuf};
+
+/// Downloads a YouTube video (1080p max, merged with best audio into mp4)
+/// into `dest_dir`, creating it if needed. Returns the final file path.
+pub fn download_youtube_video(url: &str, dest_dir: &Path) -> Result<PathBuf, String> {
+    if !is_valid_youtube_url(url) {
+        return Err(format!("Not a valid YouTube URL: {url}"));
+    }
+
+    std::fs::create_dir_all(dest_dir)
+        .map_err(|e| format!("Failed to create directory: {e}"))?;
+
+    let output_template = dest_dir.join("%(title)s.%(ext)s");
+    let output_str = output_template.to_string_lossy().into_owned();
+
+    let output = silent_command(yt_dlp_path())
+        .args([
+            "-f",
+            "bestvideo[height<=1080]+bestaudio/best",
+            "--merge-output-format",
+            "mp4",
+            "--restrict-filenames",
+            "--no-playlist",
+            "--no-warnings",
+            "-o",
+            &output_str,
+            "--print",
+            "after_move:filepath",
+            url,
+        ])
+        .output()
+        .map_err(|e| format!("Failed to start yt-dlp: {e}"))?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(format!("yt-dlp download failed: {stderr}"));
+    }
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    for line in stdout.lines().rev() {
+        let path = PathBuf::from(line.trim());
+        if path.is_file() {
+            return Ok(path);
+        }
+    }
+
+    // Fallback: `--print` output wasn't a usable path — pick the most
+    // recently modified mp4 in dest_dir.
+    let mut mp4_files: Vec<PathBuf> = std::fs::read_dir(dest_dir)
+        .map_err(|e| format!("Failed to read destination directory: {e}"))?
+        .filter_map(|e| e.ok())
+        .map(|e| e.path())
+        .filter(|p| p.extension().is_some_and(|ext| ext == "mp4"))
+        .collect();
+
+    mp4_files.sort_by_key(|p| {
+        p.metadata()
+            .and_then(|m| m.modified())
+            .unwrap_or(std::time::SystemTime::UNIX_EPOCH)
+    });
+
+    mp4_files
+        .pop()
+        .ok_or_else(|| "Download completed but no file found".to_string())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
