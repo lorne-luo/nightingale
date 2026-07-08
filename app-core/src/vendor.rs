@@ -698,6 +698,7 @@ pub fn step_install_packages() -> Result<(), String> {
         // Tokenizers the Qwen3 forced aligner uses internally for ja/ko.
         "nagisa>=0.2.11",
         "soynlp>=0.0.493",
+        "groq>=0.20.0",
     ];
 
     if gpu.legacy_torch {
