@@ -1,6 +1,7 @@
 mod analyzer;
 mod cache;
 mod config;
+mod downloader;
 mod logging;
 mod lyrics;
 mod microphones;
@@ -17,6 +18,7 @@ use app_core::{AppConfig, SongsStore};
 use base64::{engine::general_purpose::STANDARD as B64, Engine as _};
 use cache::{calculate_cache_stats, clear_all, clear_models_command, clear_videos_command};
 use config::{load_config, save_config};
+use downloader::{download_youtube_song, search_youtube_songs};
 use lyrics::{apply_timed_lyrics, load_lyrics, provide_lrc, save_lyrics, search_lrclib_lyrics};
 use microphones::{list_microphones, set_monitor_gain, start_mic_capture, stop_mic_capture};
 use playback::{
@@ -134,6 +136,9 @@ pub fn run() {
             save_lyrics,
             provide_lrc,
             apply_timed_lyrics,
+            // Downloader
+            search_youtube_songs,
+            download_youtube_song,
             // Playback
             load_transcript,
             get_audio_paths,
