@@ -9,7 +9,7 @@ export const useDownloadYoutubeMutation = () => {
   return useMutation({
     mutationFn: (url: string) => downloadYoutubeSong(url),
     onSuccess: () => {
-      toast.info("Downloading song from YouTube…");
+      toast.info("Added song from YouTube");
       queryClient.invalidateQueries({ queryKey: MENU });
       queryClient.invalidateQueries({ queryKey: SONGS });
       queryClient.invalidateQueries({ queryKey: SONGS_META });

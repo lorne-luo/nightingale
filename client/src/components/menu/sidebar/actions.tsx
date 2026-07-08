@@ -14,6 +14,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { EXIT_SUPPORTED } from "@/bridge/exit";
 import { useMenuFocus } from "@/contexts/menu-focus-context";
 import { useCurrentProfile } from "@/hooks/use-current-profile";
@@ -228,22 +229,28 @@ export const Actions = ({ registerCallback, focusedSidebarIndex }: ActionsProps)
                   />
                 )}
               </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => {
-                  if (!isFolderSource) return;
-                  setDropdownOpen(false);
-                  setMode("add-from-youtube");
-                }}
-                disabled={!isFolderSource}
-                title={
-                  isFolderSource
-                    ? undefined
-                    : "Only available when your library source is a local folder"
-                }
-              >
-                <YoutubeIcon />
-                Add from YouTube
-              </DropdownMenuItem>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="contents">
+                    <DropdownMenuItem
+                      onClick={() => {
+                        if (!isFolderSource) return;
+                        setDropdownOpen(false);
+                        setMode("add-from-youtube");
+                      }}
+                      disabled={!isFolderSource}
+                    >
+                      <YoutubeIcon />
+                      Add from YouTube
+                    </DropdownMenuItem>
+                  </span>
+                </TooltipTrigger>
+                {!isFolderSource && (
+                  <TooltipContent>
+                    Only available when your library source is a local folder
+                  </TooltipContent>
+                )}
+              </Tooltip>
               <DropdownMenuItem onClick={() => setMode("about")}>
                 <InfoIcon />
                 About
