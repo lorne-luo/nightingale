@@ -74,6 +74,15 @@ pub fn python_path() -> PathBuf {
     }
 }
 
+pub fn yt_dlp_path() -> PathBuf {
+    let bin_dir = if cfg!(windows) {
+        vendor_dir().join("venv").join("Scripts")
+    } else {
+        vendor_dir().join("venv").join("bin")
+    };
+    bin_dir.join(if cfg!(windows) { "yt-dlp.exe" } else { "yt-dlp" })
+}
+
 pub fn analyzer_dir() -> PathBuf {
     vendor_dir().join("analyzer")
 }
@@ -699,6 +708,7 @@ pub fn step_install_packages() -> Result<(), String> {
         "nagisa>=0.2.11",
         "soynlp>=0.0.493",
         "groq>=0.20.0",
+        "yt-dlp",
     ];
 
     if gpu.legacy_torch {

@@ -51,6 +51,55 @@ pub fn extract_video_id(url: &str) -> Option<String> {
     None
 }
 
+use serde::{Deserialize, Serialize};
+use ts_rs::TS;
+
+use crate::vendor::{silent_command, yt_dlp_path};
+
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct YoutubeSearchResult {
+    pub id: String,
+    pub title: String,
+    #[serde(default)]
+    pub channel: String,
+    #[serde(default, alias = "duration")]
+    pub duration_secs: f64,
+}
+
+/// Searches YouTube via `yt-dlp`'s built-in `ytsearchN:` support. No API key
+/// needed. Returns an empty list on any failure (matches `lrclib_candidates`'s
+/// swallow-and-log-warn behavior for search — a search "error" and "no
+/// results" render identically in the UI, same as the LRCLIB search).
+pub fn search_youtube(query: &str, limit: usize) -> Vec<YoutubeSearchResult> {
+    let yt_dlp = yt_dlp_path();
+    let search_spec = format!("ytsearch{limit}:{query}");
+
+    let output = match silent_command(&yt_dlp)
+        .args(["--dump-json", "--flat-playlist", "--no-warnings", &search_spec])
+        .output()
+    {
+        Ok(o) => o,
+        Err(e) => {
+            tracing::warn!("[downloader] Failed to run yt-dlp search: {e}");
+            return Vec::new();
+        }
+    };
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        tracing::warn!("[downloader] yt-dlp search failed: {stderr}");
+        return Vec::new();
+    }
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    stdout
+        .lines()
+        .filter(|line| !line.trim().is_empty())
+        .filter_map(|line| serde_json::from_str::<YoutubeSearchResult>(line).ok())
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
