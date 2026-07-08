@@ -19,6 +19,7 @@ import { useMenuFocus } from "@/contexts/menu-focus-context";
 import { useCurrentProfile } from "@/hooks/use-current-profile";
 import { useDialog } from "@/hooks/use-dialog";
 import { useDonationSeen } from "@/hooks/use-donation-seen";
+import { useConfig } from "@/queries/use-config";
 import { useShouldRunSetup } from "@/hooks/use-should-run-setup";
 import {
   ChevronsUpDownIcon,
@@ -29,6 +30,7 @@ import {
   InfoIcon,
   RefreshCcwDotIcon,
   UserIcon,
+  YoutubeIcon,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useNavInput } from "@/hooks/navigation/use-nav-input";
@@ -46,6 +48,8 @@ export const Actions = ({ registerCallback, focusedSidebarIndex }: ActionsProps)
   const { setOpen } = useSidebar();
   const navigate = useNavigate();
   const profile = useCurrentProfile();
+  const { data: config } = useConfig();
+  const isFolderSource = config?.library_source?.kind === "folder";
   const { focus, actionsRef } = useMenuFocus();
   const { setShouldRunSetup } = useShouldRunSetup();
 
@@ -223,6 +227,22 @@ export const Actions = ({ registerCallback, focusedSidebarIndex }: ActionsProps)
                     className="ml-auto size-2 rounded-full bg-pink-500"
                   />
                 )}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => {
+                  if (!isFolderSource) return;
+                  setDropdownOpen(false);
+                  setMode("add-from-youtube");
+                }}
+                aria-disabled={!isFolderSource}
+                title={
+                  isFolderSource
+                    ? undefined
+                    : "Only available when your library source is a local folder"
+                }
+              >
+                <YoutubeIcon />
+                Add from YouTube
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => setMode("about")}>
                 <InfoIcon />
