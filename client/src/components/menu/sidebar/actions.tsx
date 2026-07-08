@@ -231,7 +231,7 @@ export const Actions = ({ registerCallback, focusedSidebarIndex }: ActionsProps)
               </DropdownMenuItem>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <span className="relative inline-flex">
+                  <span className="relative block w-full">
                     <DropdownMenuItem
                       onClick={() => {
                         if (!isFolderSource) return;
