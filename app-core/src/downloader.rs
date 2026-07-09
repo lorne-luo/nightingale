@@ -1,54 +1,64 @@
+fn is_youtube_host(host: &str) -> bool {
+    let host = host.strip_prefix("www.").unwrap_or(host);
+    matches!(
+        host,
+        "youtube.com" | "m.youtube.com" | "music.youtube.com" | "youtu.be"
+    )
+}
+
+fn youtube_short_host(host: &str) -> bool {
+    host.strip_prefix("www.").unwrap_or(host) == "youtu.be"
+}
+
+fn valid_video_id(id: &str) -> Option<String> {
+    if (11..=12).contains(&id.len()) {
+        Some(id.to_string())
+    } else {
+        None
+    }
+}
+
+fn extract_video_id_from_url(parsed: &url::Url) -> Option<String> {
+    let host = parsed.host_str()?;
+    if !is_youtube_host(host) {
+        return None;
+    }
+
+    if youtube_short_host(host) {
+        let id = parsed.path().trim_start_matches('/');
+        let id = id.split(&['?', '#', '/'][..]).next()?;
+        return valid_video_id(id);
+    }
+
+    if parsed.path() != "/watch" {
+        return None;
+    }
+
+    let v = parsed
+        .query_pairs()
+        .find(|(key, _)| key == "v")
+        .map(|(_, value)| value.into_owned())?;
+    valid_video_id(&v)
+}
+
 /// Validates a YouTube URL using proper parsing.
 pub fn is_valid_youtube_url(url: &str) -> bool {
-    let url = url.trim();
+    let parsed = match url::Url::parse(url.trim()) {
+        Ok(url) => url,
+        Err(_) => return false,
+    };
 
-    if !url.starts_with("http://") && !url.starts_with("https://") {
+    if parsed.scheme() != "http" && parsed.scheme() != "https" {
         return false;
     }
 
-    let lower = url.to_lowercase();
-    let is_youtube = lower.contains("youtube.com/watch")
-        || lower.contains("www.youtube.com/watch")
-        || lower.contains("m.youtube.com/watch")
-        || lower.contains("youtu.be/");
-
-    if !is_youtube {
-        return false;
-    }
-
-    extract_video_id(url).is_some()
+    extract_video_id_from_url(&parsed).is_some()
 }
 
 /// Extracts the YouTube video ID from a URL.
 pub fn extract_video_id(url: &str) -> Option<String> {
-    let url = url.trim();
-
-    if url.contains("youtu.be/") {
-        let start = url.find("youtu.be/")? + 9;
-        let rest = &url[start..];
-        let end = rest
-            .find('?')
-            .or_else(|| rest.find('&'))
-            .or_else(|| rest.find('/'))
-            .unwrap_or(rest.len());
-        let id = &rest[..end];
-        if id.len() >= 11 && id.len() <= 12 {
-            return Some(id.to_string());
-        }
-        return None;
-    }
-
-    if let Some(pos) = url.find("v=") {
-        let start = pos + 2;
-        let rest = &url[start..];
-        let end = rest.find('&').unwrap_or(rest.len());
-        let id = &rest[..end];
-        if id.len() >= 11 && id.len() <= 12 {
-            return Some(id.to_string());
-        }
-    }
-
-    None
+    let parsed = url::Url::parse(url.trim()).ok()?;
+    extract_video_id_from_url(&parsed)
 }
 
 use serde::{Deserialize, Serialize};
@@ -192,6 +202,35 @@ mod tests {
     #[test]
     fn rejects_non_youtube_domain() {
         assert!(!is_valid_youtube_url("https://vimeo.com/12345678"));
+    }
+
+    #[test]
+    fn rejects_youtube_substring_on_other_host() {
+        assert!(!is_valid_youtube_url(
+            "https://evil.com/path/youtube.com/watch?v=dQw4w9WgXcQ"
+        ));
+    }
+
+    #[test]
+    fn accepts_v_param_not_first_in_query() {
+        assert!(is_valid_youtube_url(
+            "https://www.youtube.com/watch?feature=share&v=dQw4w9WgXcQ"
+        ));
+    }
+
+    #[test]
+    fn accepts_url_with_fragment() {
+        assert!(is_valid_youtube_url(
+            "https://www.youtube.com/watch?v=dQw4w9WgXcQ#t=42"
+        ));
+    }
+
+    #[test]
+    fn extracts_id_from_url_with_fragment() {
+        assert_eq!(
+            extract_video_id("https://www.youtube.com/watch?v=dQw4w9WgXcQ#t=42").as_deref(),
+            Some("dQw4w9WgXcQ")
+        );
     }
 
     #[test]

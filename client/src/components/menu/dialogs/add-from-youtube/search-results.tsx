@@ -50,13 +50,14 @@ export const SearchResults = ({
             size="xs"
             variant="default"
             aria-disabled={isDownloading}
+            aria-label={`Download ${result.title}`}
             onClick={() => {
               if (isDownloading) return;
               onSelect(result);
             }}
             className={cn(ARIA_DISABLED_CLASS, ringFor(isFocused(index)))}
           >
-            Download
+            {isDownloading ? "Downloading…" : "Download"}
           </Button>
         </div>
       ))}

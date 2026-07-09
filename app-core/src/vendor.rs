@@ -97,10 +97,7 @@ fn ready_marker() -> PathBuf {
 }
 
 pub fn is_ready() -> bool {
-    ready_marker().is_file()
-        && ffmpeg_path().is_file()
-        && python_path().is_file()
-        && analyzer_dir().join("analyze.py").is_file()
+    vendor_core_ready()
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default, TS)]
@@ -824,13 +821,44 @@ pub fn step_extract_scripts() -> Result<(), String> {
 /// Refresh the embedded analyzer scripts on top of an already-set-up vendor dir.
 /// No-op when setup hasn't completed yet — initial extraction is handled by
 /// `step_extract_scripts` during the setup flow.
+fn vendor_core_ready() -> bool {
+    ready_marker().is_file()
+        && ffmpeg_path().is_file()
+        && python_path().is_file()
+        && analyzer_dir().join("analyze.py").is_file()
+}
+
 pub fn refresh_analyzer_scripts_if_ready() -> Result<(), String> {
-    if !is_ready() {
+    if !vendor_core_ready() {
         return Ok(());
     }
 
     vendor_scripts::write_scripts(&analyzer_dir())
         .map_err(|e| format!("Failed to refresh analyzer scripts: {e}"))
+}
+
+/// Installs yt-dlp into an existing venv when setup completed before this
+/// dependency was added. Avoids forcing a full vendor re-setup on upgrade.
+pub fn ensure_yt_dlp_if_ready() -> Result<(), String> {
+    if !vendor_core_ready() || yt_dlp_path().is_file() {
+        return Ok(());
+    }
+
+    tracing::info!("[vendor] yt-dlp missing from venv, installing...");
+    let uv = uv_path();
+    let py_str = python_path().to_string_lossy().into_owned();
+
+    let output = silent_command(&uv)
+        .args(["pip", "install", "yt-dlp", "--python", &py_str])
+        .output()
+        .map_err(|e| format!("Failed to run uv pip install yt-dlp: {e}"))?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(format!("yt-dlp install failed: {stderr}"));
+    }
+
+    Ok(())
 }
 
 pub fn mark_ready() -> Result<(), String> {

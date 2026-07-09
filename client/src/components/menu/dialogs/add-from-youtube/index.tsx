@@ -21,8 +21,28 @@ import { SearchResults } from "./search-results";
 
 type AddYoutubeTab = "search" | "paste";
 
-const isLikelyYoutubeUrl = (value: string): boolean =>
-  /^https?:\/\/(www\.|m\.)?(youtube\.com\/watch\?v=|youtu\.be\/)/.test(value.trim());
+const isLikelyYoutubeUrl = (value: string): boolean => {
+  try {
+    const url = new URL(value.trim());
+    if (url.protocol !== "http:" && url.protocol !== "https:") {
+      return false;
+    }
+
+    const host = url.hostname.replace(/^www\./, "");
+    if (host === "youtu.be") {
+      const id = url.pathname.slice(1).split(/[/?#]/)[0];
+      return id.length >= 11;
+    }
+
+    if (host === "youtube.com" || host === "m.youtube.com" || host === "music.youtube.com") {
+      return url.pathname === "/watch" && (url.searchParams.get("v")?.length ?? 0) >= 11;
+    }
+
+    return false;
+  } catch {
+    return false;
+  }
+};
 
 // Segment 0 is always the tabs row (2 slots: Search / Paste URL — kept as a
 // single 2-slot segment so left/right switches tabs, matching the
@@ -55,7 +75,8 @@ export const AddFromYoutubeDialog = () => {
   };
 
   const results = search.data ?? [];
-  const stops = navStops(tab, results.length);
+  const resultCount = tab === "search" && search.isPending ? 0 : results.length;
+  const stops = navStops(tab, resultCount);
   const footerSegment = stops.length - 1;
   const resultsStartSegment = 2;
 
@@ -125,7 +146,7 @@ export const AddFromYoutubeDialog = () => {
                 <Button
                   aria-disabled={query.trim().length === 0 || search.isPending}
                   onClick={() => {
-                    if (query.trim().length === 0) return;
+                    if (query.trim().length === 0 || search.isPending) return;
                     search.mutate(query.trim());
                   }}
                   className={cn(ARIA_DISABLED_CLASS, ringFor(isFocused(1, 1)))}
@@ -154,7 +175,7 @@ export const AddFromYoutubeDialog = () => {
               <Button
                 aria-disabled={!isLikelyYoutubeUrl(pastedUrl) || download.isPending}
                 onClick={() => {
-                  if (!isLikelyYoutubeUrl(pastedUrl)) return;
+                  if (!isLikelyYoutubeUrl(pastedUrl) || download.isPending) return;
                   startDownload(pastedUrl.trim());
                 }}
                 className={cn(ARIA_DISABLED_CLASS, ringFor(isFocused(2, 0)))}
