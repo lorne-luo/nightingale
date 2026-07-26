@@ -225,11 +225,15 @@ fn spawn_server() -> Result<ServerProcess, NightingaleError> {
         .env("PYTORCH_ENABLE_MPS_FALLBACK", "1")
         .env("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
         .env("HF_HUB_DISABLE_SYMLINKS_WARNING", "1")
-        .env("NLTK_DATA", models.join("nltk_data"))
-        .env("NEMO_CACHE_DIR", models.join("nemo"))
-        .env("ONNX_ASR_CACHE_DIR", models.join("onnx_asr"))
-        .arg(&script)
-        .stdin(Stdio::null())
+        .env("NLTK_DATA", models.join("nltk_data"));
+
+    // Pass GROQ_API_KEY to Python if set (for Groq Whisper API)
+    if let Ok(groq_key) = std::env::var("GROQ_API_KEY") {
+        cmd.env("GROQ_API_KEY", groq_key);
+    }
+
+    cmd.arg(&script)
+        .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
 

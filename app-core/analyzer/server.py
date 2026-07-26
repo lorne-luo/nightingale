@@ -21,10 +21,13 @@ Wire protocol (NDJSON over TCP, one JSON object per line):
 """
 
 import json
+import logging
 import os
 import secrets
 import socket
 import sys
+
+logging.basicConfig(stream=sys.stderr, level=logging.INFO, format="%(name)s: %(message)s")
 
 if os.name == "nt":
     import huggingface_hub.file_download as _hf_dl

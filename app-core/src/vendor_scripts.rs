@@ -17,6 +17,7 @@ const WHISPER_COMPAT_PY: &str = include_str!("../analyzer/whisper_compat.py");
 const PARAKEET_PY: &str = include_str!("../analyzer/parakeet.py");
 const GPU_PY: &str = include_str!("../analyzer/gpu.py");
 const CJK_PY: &str = include_str!("../analyzer/cjk.py");
+const REQUIREMENTS_TXT: &str = include_str!("../analyzer/requirements.txt");
 
 const FILES: &[(&str, &str)] = &[
     ("analyze.py", ANALYZE_PY),
@@ -36,6 +37,7 @@ const FILES: &[(&str, &str)] = &[
     ("parakeet.py", PARAKEET_PY),
     ("gpu.py", GPU_PY),
     ("cjk.py", CJK_PY),
+    ("requirements.txt", REQUIREMENTS_TXT),
 ];
 
 pub fn write_scripts(dir: &Path) -> std::io::Result<()> {

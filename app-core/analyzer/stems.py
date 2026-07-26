@@ -14,14 +14,7 @@ KARAOKE_MODEL = "mel_band_roformer_karaoke_aufr33_viperx_sdr_10.1956.ckpt"
 
 
 def _ensure_wav(audio_path: str, work_dir: str) -> str:
-    """Convert input audio to WAV so plain `soundfile` can decode it.
-
-    We deliberately avoid `torchaudio.load`/`torchaudio.save` here: in
-    torchaudio >= 2.9 those go through `torchcodec`, which `dlopen`s the
-    FFmpeg shared libraries (`libavcodec.so.X`, ...). Our vendor dir only
-    ships a static `ffmpeg` binary, and target machines aren't guaranteed to
-    have the FFmpeg shared libs installed, so torchcodec fails to load.
-    """
+    """Convert input audio to WAV if needed so torchaudio/audio_separator can load it."""
     if audio_path.lower().endswith(".wav"):
         return audio_path
     wav_path = os.path.join(work_dir, "input.wav")
@@ -132,6 +125,13 @@ def separate_stems_uvr(audio_path: str, work_dir: str, models_dir: str) -> tuple
         progress(15, "Separating vocals from instrumentals...")
         output_files = separator.separate(audio_path)
 
+    progress(10, "Loading audio file...")
+    load_path = _ensure_wav(audio_path, work_dir)
+
+    progress(15, "Separating vocals from instrumentals...")
+    output_files = separator.separate(load_path)
+    del separator
+    free_gpu()
     print(f"[nightingale:LOG] Separator outputs: {output_files}", flush=True)
 
     vocals = _resolve_separator_output(output_files, work_dir, "(Vocals)")
