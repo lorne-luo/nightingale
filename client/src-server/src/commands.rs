@@ -238,6 +238,42 @@ async fn dispatch(events: std::sync::Arc<EventBus>, name: &str, payload: Value) 
             Ok(serde_json::to_value(items).map_err(serde_err)?)
         }
 
+        // ── Downloader ─────────────────────────────────────────────────────
+        "search_youtube_songs" => {
+            #[derive(Deserialize)]
+            struct Args {
+                query: String,
+            }
+            let args: Args = deserialize(payload)?;
+            let results =
+                tokio::task::spawn_blocking(move || app_core::search_youtube(&args.query, 8))
+                    .await
+                    .map_err(blocking_task_err)?
+                    .map_err(ApiError::bad_request)?;
+            Ok(serde_json::to_value(results).map_err(serde_err)?)
+        }
+        "download_youtube_song" => {
+            #[derive(Deserialize)]
+            struct Args {
+                url: String,
+            }
+            let args: Args = deserialize(payload)?;
+            let Some(LibrarySource::Folder { path }) = AppConfig::load().library_source else {
+                return Err(ApiError::bad_request(
+                    "Adding songs from YouTube requires a local folder library source.",
+                ));
+            };
+            let dest_dir = path.join("YouTube Downloads");
+            tokio::task::spawn_blocking(move || {
+                app_core::download_youtube_video(&args.url, &dest_dir)
+            })
+            .await
+            .map_err(blocking_task_err)?
+            .map_err(ApiError::bad_request)?;
+            app_core::start_scan();
+            Ok(Value::Null)
+        }
+
         // ── Analyzer ─────────────────────────────────────────────────────
         "enqueue_one" => {
             let args: FileHashArgs = deserialize(payload)?;

@@ -182,6 +182,7 @@ dependencies = [
  "rusqlite",
  "serde",
  "serde_json",
+ "tempfile",
  "tiny_http",
  "tracing",
  "ts-rs",

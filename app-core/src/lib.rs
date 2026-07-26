@@ -1,6 +1,7 @@
 mod analyzer;
 mod cache;
 mod config;
+mod downloader;
 mod error;
 mod library_db;
 mod library_menu;
@@ -27,6 +28,7 @@ pub use cache::{
     clear_videos, default_nightingale_dir, nightingale_dir, normalized_target_path, same_path,
 };
 pub use config::{AppConfig, LibrarySource};
+pub use downloader::{YoutubeSearchResult, download_youtube_video, search_youtube};
 pub use library_db::{init_library, library_db_path};
 pub use library_menu::{LibraryMenuItem, LibraryMenuItems, load_library_menu_items};
 pub use library_model::{LibraryMenuFilters, LoadSongsParams, SongsMeta, SongsStore};
@@ -63,10 +65,10 @@ pub use source::{
     },
 };
 pub use vendor::{
-    SetupFolders, SetupProgress, SetupStep, clear_vendor_dir, is_ready, mark_ready,
-    refresh_analyzer_scripts_if_ready, resolve_data_path_input, run_vendor_setup, step_create_venv,
-    step_download_ffmpeg, step_download_uv, step_extract_scripts, step_install_packages,
-    step_install_python,
+    SetupFolders, SetupProgress, SetupStep, clear_vendor_dir, ensure_yt_dlp_ready, is_ready,
+    mark_ready, refresh_analyzer_scripts_if_ready, resolve_data_path_input, run_vendor_setup,
+    step_create_venv, step_download_ffmpeg, step_download_uv, step_extract_scripts,
+    step_install_packages, step_install_python,
 };
 
 pub fn startup() -> Result<(), String> {

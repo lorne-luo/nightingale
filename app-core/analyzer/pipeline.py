@@ -10,6 +10,7 @@ from whisper_compat import progress
 from key_detect import detect_key
 from stems import separate_stems, separate_stems_uvr
 from transcribe import transcribe_vocals
+from transcribe_groq import transcribe_with_groq
 from align import align_lyrics
 from transcribe_groq import transcribe_with_groq
 
@@ -128,8 +129,8 @@ def transcribe_or_align(
             pre_align_cleanup=pre_align_cleanup,
         )
 
-    # Priority 2: Use Groq if API key is set
-    if os.environ.get("GROQ_API_KEY"):
+    # Groq uploads are only allowed when the user explicitly selects that engine.
+    if engine == "groq":
         print("[nightingale:LOG] Using Groq Whisper API", flush=True)
         return transcribe_with_groq(vocals_path)
 

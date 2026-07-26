@@ -14,11 +14,13 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { EXIT_SUPPORTED } from "@/bridge/exit";
 import { useMenuFocus } from "@/contexts/menu-focus-context";
 import { useCurrentProfile } from "@/hooks/use-current-profile";
 import { useDialog } from "@/hooks/use-dialog";
 import { useDonationSeen } from "@/hooks/use-donation-seen";
+import { useConfig } from "@/queries/use-config";
 import { useShouldRunSetup } from "@/hooks/use-should-run-setup";
 import {
   ChevronsUpDownIcon,
@@ -29,6 +31,7 @@ import {
   InfoIcon,
   RefreshCcwDotIcon,
   UserIcon,
+  YoutubeIcon,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useNavInput } from "@/hooks/navigation/use-nav-input";
@@ -46,6 +49,8 @@ export const Actions = ({ registerCallback, focusedSidebarIndex }: ActionsProps)
   const { setOpen } = useSidebar();
   const navigate = useNavigate();
   const profile = useCurrentProfile();
+  const { data: config } = useConfig();
+  const isFolderSource = config?.library_source?.kind === "folder";
   const { focus, actionsRef } = useMenuFocus();
   const { setShouldRunSetup } = useShouldRunSetup();
 
@@ -224,6 +229,28 @@ export const Actions = ({ registerCallback, focusedSidebarIndex }: ActionsProps)
                   />
                 )}
               </DropdownMenuItem>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="relative block w-full">
+                    <DropdownMenuItem
+                      onClick={() => {
+                        if (!isFolderSource) return;
+                        setDropdownOpen(false);
+                        setMode("add-from-youtube");
+                      }}
+                      disabled={!isFolderSource}
+                    >
+                      <YoutubeIcon />
+                      Add from YouTube
+                    </DropdownMenuItem>
+                  </span>
+                </TooltipTrigger>
+                {!isFolderSource && (
+                  <TooltipContent>
+                    Only available when your library source is a local folder
+                  </TooltipContent>
+                )}
+              </Tooltip>
               <DropdownMenuItem onClick={() => setMode("about")}>
                 <InfoIcon />
                 About

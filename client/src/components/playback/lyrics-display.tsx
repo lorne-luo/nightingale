@@ -294,11 +294,13 @@ function LyricsDisplayImpl({
 
   const seg = segments[segIdx];
   const nextSeg = segIdx + 1 < segments.length ? segments[segIdx + 1] : null;
+  const segWords = seg.words ?? [];
+  const nextWords = nextSeg?.words ?? [];
 
   wordRefs.current = [];
 
-  const segHasReading = seg.words.some((w) => w.reading);
-  const nextHasReading = nextSeg?.words.some((w) => w.reading) ?? false;
+  const segHasReading = segWords.some((w) => w.reading);
+  const nextHasReading = nextWords.some((w) => w.reading);
 
   const vertical = verticalPosition ?? "bottom";
   const horizontal = horizontalPosition ?? "center";
@@ -317,7 +319,7 @@ function LyricsDisplayImpl({
         style={{ display: "none" }}
       >
         <span ref={countdownRef} className={COUNTDOWN_CLASS} style={{ display: "none" }} />
-        {seg.words.length > 0 && (
+        {segWords.length > 0 ? (
           <p
             className={lineClass(
               segHasReading,
@@ -326,12 +328,12 @@ function LyricsDisplayImpl({
               horizontal,
             )}
           >
-            {seg.words.map((word, wi) => (
+            {segWords.map((word, wi) => (
               <WordToken
                 key={`${segIdx}-${wi}`}
                 word={word}
                 hasReading={segHasReading}
-                isLast={wi === seg.words.length - 1}
+                isLast={wi === segWords.length - 1}
                 readingClass="text-[clamp(0.65rem,3svh,1rem)]"
                 refSetter={(el) => {
                   wordRefs.current[wi] = el;
@@ -339,6 +341,17 @@ function LyricsDisplayImpl({
                 style={STYLES.unsung}
               />
             ))}
+          </p>
+        ) : (
+          <p
+            className={lineClass(
+              false,
+              "text-[clamp(1.35rem,7svh,2.5rem)] leading-tight font-bold",
+              "gap-x-3 gap-y-1",
+              horizontal,
+            )}
+          >
+            {seg.text}
           </p>
         )}
       </div>
@@ -357,16 +370,18 @@ function LyricsDisplayImpl({
               horizontal,
             )}
           >
-            {nextSeg.words.map((word, wi) => (
-              <WordToken
-                key={wi}
-                word={word}
-                hasReading={nextHasReading}
-                isLast={wi === nextSeg.words.length - 1}
-                readingClass="text-[clamp(0.55rem,2.25svh,0.7rem)]"
-                style={nextLineStyle(word)}
-              />
-            ))}
+            {nextWords.length > 0
+              ? nextWords.map((word, wi) => (
+                  <WordToken
+                    key={wi}
+                    word={word}
+                    hasReading={nextHasReading}
+                    isLast={wi === nextWords.length - 1}
+                    readingClass="text-[clamp(0.55rem,2.25svh,0.7rem)]"
+                    style={nextLineStyle(word)}
+                  />
+                ))
+              : nextSeg.text}
           </p>
         </div>
       )}

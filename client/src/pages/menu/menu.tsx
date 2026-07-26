@@ -1,3 +1,4 @@
+import { AddFromYoutubeDialog } from "@/components/menu/dialogs/add-from-youtube";
 import { ClearCacheDialog } from "@/components/menu/dialogs/clear-cache";
 import { DonateDialog } from "@/components/menu/dialogs/donate";
 import { EditLyricsDialog } from "@/components/menu/dialogs/edit-lyrics";
@@ -74,6 +75,7 @@ export const MenuLayout = () => {
       <SelectLanguageDialog />
       <EditLyricsDialog />
       <ClearCacheDialog />
+      <AddFromYoutubeDialog />
       <JellyfinConnectDialog />
       <NavidromeConnectDialog />
       <PlexConnectDialog />
