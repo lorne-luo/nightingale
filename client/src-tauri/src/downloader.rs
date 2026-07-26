@@ -1,12 +1,14 @@
-use app_core::{AppConfig, LibrarySource, YoutubeSearchResult, download_youtube_video, search_youtube};
+use app_core::{
+    download_youtube_video, search_youtube, AppConfig, LibrarySource, YoutubeSearchResult,
+};
 
 use crate::scanner::trigger_scan;
 
 #[tauri::command]
-pub async fn search_youtube_songs(query: String) -> Vec<YoutubeSearchResult> {
+pub async fn search_youtube_songs(query: String) -> Result<Vec<YoutubeSearchResult>, String> {
     tauri::async_runtime::spawn_blocking(move || search_youtube(&query, 8))
         .await
-        .unwrap_or_default()
+        .map_err(|e| format!("Search task panicked: {e}"))?
 }
 
 #[tauri::command]

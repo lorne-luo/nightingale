@@ -15,8 +15,9 @@ export const useDownloadYoutubeMutation = () => {
       queryClient.invalidateQueries({ queryKey: SONGS_META });
       queryClient.invalidateQueries({ queryKey: ANALYSIS_QUEUE });
     },
-    onError: (error: Error) => {
-      toast.error(`Error downloading from YouTube: ${error.message}`);
+    onError: (error: unknown) => {
+      const message = error instanceof Error ? error.message : String(error);
+      toast.error(`Error downloading from YouTube: ${message}`);
     },
   });
 };

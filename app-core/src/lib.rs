@@ -65,7 +65,7 @@ pub use source::{
     },
 };
 pub use vendor::{
-    SetupFolders, SetupProgress, SetupStep, clear_vendor_dir, ensure_yt_dlp_if_ready, is_ready,
+    SetupFolders, SetupProgress, SetupStep, clear_vendor_dir, ensure_yt_dlp_ready, is_ready,
     mark_ready, refresh_analyzer_scripts_if_ready, resolve_data_path_input, run_vendor_setup,
     step_create_venv, step_download_ffmpeg, step_download_uv, step_extract_scripts,
     step_install_packages, step_install_python,
@@ -84,10 +84,6 @@ pub fn startup() -> Result<(), String> {
 
     if let Err(e) = refresh_analyzer_scripts_if_ready() {
         tracing::warn!("Failed to refresh analyzer scripts: {e}");
-    }
-
-    if let Err(e) = ensure_yt_dlp_if_ready() {
-        tracing::warn!("Failed to install yt-dlp: {e}");
     }
 
     if AppConfig::load().auto_analyze() {

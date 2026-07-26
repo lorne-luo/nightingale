@@ -42,7 +42,7 @@ function segmentSlotFromFlatIndex(segmentSizes: readonly number[], flatIndex: nu
 interface UseSettingsNavigationOptions {
   containerRef: RefObject<HTMLDivElement | null>;
   tab: SettingsTab;
-  isParakeet: boolean;
+  isNonWhisper: boolean;
   micMonitorGain: number;
   micLatencySec: number;
   vocalThresholdPct: number;
@@ -56,7 +56,7 @@ interface UseSettingsNavigationOptions {
 export function useSettingsNavigation({
   containerRef,
   tab,
-  isParakeet,
+  isNonWhisper,
   micMonitorGain,
   micLatencySec,
   vocalThresholdPct,
@@ -66,7 +66,7 @@ export function useSettingsNavigation({
   onMicLatencyChange,
   onVocalThresholdChange,
 }: UseSettingsNavigationOptions) {
-  const stops = useMemo(() => getSettingsStops(tab, isParakeet), [tab, isParakeet]);
+  const stops = useMemo(() => getSettingsStops(tab, isNonWhisper), [tab, isNonWhisper]);
   const itemCount = useMemo(() => stops.reduce((sum, size) => sum + size, 0), [stops]);
   const footerSegment = stops.length - 1;
 
@@ -98,7 +98,7 @@ export function useSettingsNavigation({
         return true;
       }
 
-      if (tab === "analysis" && segment === getAnalysisNav(isParakeet).vocalThreshold) {
+      if (tab === "analysis" && segment === getAnalysisNav(isNonWhisper).vocalThreshold) {
         const delta = action.right ? VOCAL_THRESHOLD_STEP : -VOCAL_THRESHOLD_STEP;
         const next = Math.min(
           VOCAL_THRESHOLD_MAX,

@@ -57,8 +57,8 @@ export const SettingsPage = () => {
 
   const close = () => navigate("/");
   const asrEngine = config?.asr_engine ?? DEFAULTS.asr_engine;
-  const isParakeet = asrEngine === "parakeet";
-  const analysisNav = getAnalysisNav(isParakeet);
+  const isNonWhisper = asrEngine !== "whisper";
+  const analysisNav = getAnalysisNav(isNonWhisper);
 
   const micOptions = useMemo(
     () => [
@@ -126,7 +126,7 @@ export const SettingsPage = () => {
   const { footerSegment, getFocusClassName, syncFocusFromElement } = useSettingsNavigation({
     containerRef,
     tab,
-    isParakeet,
+    isNonWhisper,
     micMonitorGain,
     micLatencySec,
     vocalThresholdPct,
@@ -294,7 +294,7 @@ export const SettingsPage = () => {
                 />
               </Field>
 
-              {!isParakeet && (
+              {!isNonWhisper && (
                 <>
                   <Field>
                     <Label htmlFor="model-1">Model size</Label>

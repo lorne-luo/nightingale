@@ -1,6 +1,7 @@
 use std::{
     path::{Path, PathBuf},
     process::Command,
+    sync::Mutex,
 };
 
 use serde::{Deserialize, Serialize};
@@ -80,7 +81,11 @@ pub fn yt_dlp_path() -> PathBuf {
     } else {
         vendor_dir().join("venv").join("bin")
     };
-    bin_dir.join(if cfg!(windows) { "yt-dlp.exe" } else { "yt-dlp" })
+    bin_dir.join(if cfg!(windows) {
+        "yt-dlp.exe"
+    } else {
+        "yt-dlp"
+    })
 }
 
 pub fn analyzer_dir() -> PathBuf {
@@ -839,8 +844,21 @@ pub fn refresh_analyzer_scripts_if_ready() -> Result<(), String> {
 
 /// Installs yt-dlp into an existing venv when setup completed before this
 /// dependency was added. Avoids forcing a full vendor re-setup on upgrade.
-pub fn ensure_yt_dlp_if_ready() -> Result<(), String> {
-    if !vendor_core_ready() || yt_dlp_path().is_file() {
+static YT_DLP_INSTALL_LOCK: Mutex<()> = Mutex::new(());
+
+pub fn ensure_yt_dlp_ready() -> Result<(), String> {
+    if yt_dlp_path().is_file() {
+        return Ok(());
+    }
+
+    if !vendor_core_ready() {
+        return Err("YouTube support requires the app setup to be completed first".to_string());
+    }
+
+    let _guard = YT_DLP_INSTALL_LOCK
+        .lock()
+        .map_err(|_| "yt-dlp installer lock was poisoned".to_string())?;
+    if yt_dlp_path().is_file() {
         return Ok(());
     }
 

@@ -11,7 +11,11 @@ fn youtube_short_host(host: &str) -> bool {
 }
 
 fn valid_video_id(id: &str) -> Option<String> {
-    if (11..=12).contains(&id.len()) {
+    if id.len() == 11
+        && id
+            .bytes()
+            .all(|byte| byte.is_ascii_alphanumeric() || byte == b'_' || byte == b'-')
+    {
         Some(id.to_string())
     } else {
         None
@@ -48,7 +52,7 @@ pub fn is_valid_youtube_url(url: &str) -> bool {
         Err(_) => return false,
     };
 
-    if parsed.scheme() != "http" && parsed.scheme() != "https" {
+    if parsed.scheme() != "https" {
         return false;
     }
 
@@ -64,7 +68,10 @@ pub fn extract_video_id(url: &str) -> Option<String> {
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
-use crate::vendor::{silent_command, yt_dlp_path};
+use crate::{
+    cache::CacheDir,
+    vendor::{ensure_yt_dlp_ready, ffmpeg_path, silent_command, yt_dlp_path},
+};
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(export)]
@@ -77,37 +84,48 @@ pub struct YoutubeSearchResult {
     pub duration_secs: f64,
 }
 
-/// Searches YouTube via `yt-dlp`'s built-in `ytsearchN:` support. No API key
-/// needed. Returns an empty list on any failure (matches `lrclib_candidates`'s
-/// swallow-and-log-warn behavior for search — a search "error" and "no
-/// results" render identically in the UI, same as the LRCLIB search).
-pub fn search_youtube(query: &str, limit: usize) -> Vec<YoutubeSearchResult> {
+/// Searches YouTube via `yt-dlp`'s built-in `ytsearchN:` support.
+pub fn search_youtube(query: &str, limit: usize) -> Result<Vec<YoutubeSearchResult>, String> {
+    ensure_yt_dlp_ready()?;
+
     let yt_dlp = yt_dlp_path();
     let search_spec = format!("ytsearch{limit}:{query}");
 
-    let output = match silent_command(&yt_dlp)
-        .args(["--dump-json", "--flat-playlist", "--no-warnings", &search_spec])
+    let output = silent_command(&yt_dlp)
+        .args([
+            "--dump-json",
+            "--flat-playlist",
+            "--no-warnings",
+            "--socket-timeout",
+            "15",
+            "--retries",
+            "2",
+            &search_spec,
+        ])
         .output()
-    {
-        Ok(o) => o,
-        Err(e) => {
-            tracing::warn!("[downloader] Failed to run yt-dlp search: {e}");
-            return Vec::new();
-        }
-    };
+        .map_err(|e| format!("Failed to run yt-dlp search: {e}"))?;
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
-        tracing::warn!("[downloader] yt-dlp search failed: {stderr}");
-        return Vec::new();
+        return Err(format!("yt-dlp search failed: {}", stderr.trim()));
     }
 
     let stdout = String::from_utf8_lossy(&output.stdout);
-    stdout
+    let non_empty_lines: Vec<_> = stdout
         .lines()
-        .filter(|line| !line.trim().is_empty())
+        .map(str::trim)
+        .filter(|line| !line.is_empty())
+        .collect();
+    let results: Vec<_> = non_empty_lines
+        .iter()
         .filter_map(|line| serde_json::from_str::<YoutubeSearchResult>(line).ok())
-        .collect()
+        .collect();
+
+    if !non_empty_lines.is_empty() && results.is_empty() {
+        return Err("yt-dlp returned search results in an unsupported format".to_string());
+    }
+
+    Ok(results)
 }
 
 use std::path::{Path, PathBuf};
@@ -118,15 +136,26 @@ pub fn download_youtube_video(url: &str, dest_dir: &Path) -> Result<PathBuf, Str
     if !is_valid_youtube_url(url) {
         return Err(format!("Not a valid YouTube URL: {url}"));
     }
+    let video_id = extract_video_id(url).expect("validated YouTube URL must contain a video ID");
+    ensure_yt_dlp_ready()?;
 
-    std::fs::create_dir_all(dest_dir)
-        .map_err(|e| format!("Failed to create directory: {e}"))?;
+    std::fs::create_dir_all(dest_dir).map_err(|e| format!("Failed to create directory: {e}"))?;
 
-    let output_template = dest_dir.join("%(title)s.%(ext)s");
+    let cache = CacheDir::new();
+    let temp_dir = tempfile::Builder::new()
+        .prefix("youtube-download-")
+        .tempdir_in(&cache.path)
+        .map_err(|e| format!("Failed to create temporary download directory: {e}"))?;
+    let output_template = temp_dir.path().join("%(title)s.%(ext)s");
     let output_str = output_template.to_string_lossy().into_owned();
+    let manifest = temp_dir.path().join("download-path.txt");
+    let manifest_str = manifest.to_string_lossy().into_owned();
+    let ffmpeg = ffmpeg_path().to_string_lossy().into_owned();
 
     let output = silent_command(yt_dlp_path())
         .args([
+            "--ffmpeg-location",
+            &ffmpeg,
             "-f",
             "bestvideo[height<=1080]+bestaudio/best",
             "--merge-output-format",
@@ -134,10 +163,17 @@ pub fn download_youtube_video(url: &str, dest_dir: &Path) -> Result<PathBuf, Str
             "--restrict-filenames",
             "--no-playlist",
             "--no-warnings",
+            "--socket-timeout",
+            "30",
+            "--retries",
+            "3",
+            "--fragment-retries",
+            "3",
             "-o",
             &output_str,
-            "--print",
+            "--print-to-file",
             "after_move:filepath",
+            &manifest_str,
             url,
         ])
         .output()
@@ -148,32 +184,68 @@ pub fn download_youtube_video(url: &str, dest_dir: &Path) -> Result<PathBuf, Str
         return Err(format!("yt-dlp download failed: {stderr}"));
     }
 
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    for line in stdout.lines().rev() {
-        let path = PathBuf::from(line.trim());
-        if path.is_file() {
-            return Ok(path);
-        }
+    let manifest_contents = std::fs::read_to_string(&manifest)
+        .map_err(|e| format!("Download completed without an output manifest: {e}"))?;
+    let downloaded_path = manifest_contents
+        .lines()
+        .rev()
+        .map(str::trim)
+        .find(|line| !line.is_empty())
+        .map(PathBuf::from)
+        .ok_or_else(|| "Download completed without an output path".to_string())?;
+
+    let temp_root = temp_dir
+        .path()
+        .canonicalize()
+        .map_err(|e| format!("Failed to resolve temporary directory: {e}"))?;
+    let downloaded_path = downloaded_path
+        .canonicalize()
+        .map_err(|e| format!("Downloaded file was not found: {e}"))?;
+    if !downloaded_path.starts_with(&temp_root) {
+        return Err("yt-dlp returned a file outside the temporary directory".to_string());
     }
 
-    // Fallback: `--print` output wasn't a usable path — pick the most
-    // recently modified mp4 in dest_dir.
-    let mut mp4_files: Vec<PathBuf> = std::fs::read_dir(dest_dir)
-        .map_err(|e| format!("Failed to read destination directory: {e}"))?
-        .filter_map(|e| e.ok())
-        .map(|e| e.path())
-        .filter(|p| p.extension().is_some_and(|ext| ext == "mp4"))
-        .collect();
+    let file_name = downloaded_path
+        .file_name()
+        .ok_or_else(|| "Downloaded file has no filename".to_string())?;
+    let video_dir = dest_dir.join(video_id);
+    std::fs::create_dir_all(&video_dir)
+        .map_err(|e| format!("Failed to create video directory: {e}"))?;
+    let final_path = video_dir.join(file_name);
 
-    mp4_files.sort_by_key(|p| {
-        p.metadata()
-            .and_then(|m| m.modified())
-            .unwrap_or(std::time::SystemTime::UNIX_EPOCH)
-    });
+    install_download(&downloaded_path, &final_path)
+}
 
-    mp4_files
-        .pop()
-        .ok_or_else(|| "Download completed but no file found".to_string())
+fn install_download(source: &Path, destination: &Path) -> Result<PathBuf, String> {
+    if destination.is_file() {
+        return Ok(destination.to_path_buf());
+    }
+
+    let extension = destination
+        .extension()
+        .and_then(|value| value.to_str())
+        .unwrap_or("media");
+    let partial = destination.with_extension(format!("{extension}.part-{}", rand::random::<u64>()));
+
+    if let Err(e) = std::fs::copy(source, &partial) {
+        let _ = std::fs::remove_file(&partial);
+        return Err(format!("Failed to copy downloaded file into library: {e}"));
+    }
+
+    match std::fs::rename(&partial, destination) {
+        Ok(()) => {
+            let _ = std::fs::remove_file(source);
+            Ok(destination.to_path_buf())
+        }
+        Err(_) if destination.is_file() => {
+            let _ = std::fs::remove_file(&partial);
+            Ok(destination.to_path_buf())
+        }
+        Err(e) => {
+            let _ = std::fs::remove_file(&partial);
+            Err(format!("Failed to finalize downloaded file: {e}"))
+        }
+    }
 }
 
 #[cfg(test)]
@@ -239,6 +311,27 @@ mod tests {
     }
 
     #[test]
+    fn rejects_http_url() {
+        assert!(!is_valid_youtube_url(
+            "http://www.youtube.com/watch?v=dQw4w9WgXcQ"
+        ));
+    }
+
+    #[test]
+    fn rejects_invalid_video_id_characters() {
+        assert!(!is_valid_youtube_url(
+            "https://www.youtube.com/watch?v=dQw4w9WgXc!"
+        ));
+    }
+
+    #[test]
+    fn rejects_video_id_with_wrong_length() {
+        assert!(!is_valid_youtube_url(
+            "https://www.youtube.com/watch?v=dQw4w9WgXcQQ"
+        ));
+    }
+
+    #[test]
     fn rejects_youtube_url_without_video_id() {
         assert!(!is_valid_youtube_url("https://www.youtube.com/watch"));
     }
@@ -270,5 +363,35 @@ mod tests {
     #[test]
     fn returns_none_for_missing_id() {
         assert_eq!(extract_video_id("https://www.youtube.com/watch"), None);
+    }
+
+    #[test]
+    fn installs_download_without_overwriting_existing_file() {
+        let temp = tempfile::tempdir().unwrap();
+        let source = temp.path().join("source.mp4");
+        let destination = temp.path().join("destination.mp4");
+        std::fs::write(&source, b"new").unwrap();
+        std::fs::write(&destination, b"existing").unwrap();
+
+        assert_eq!(
+            install_download(&source, &destination).unwrap(),
+            destination
+        );
+        assert_eq!(std::fs::read(&destination).unwrap(), b"existing");
+    }
+
+    #[test]
+    fn installs_download_at_destination() {
+        let temp = tempfile::tempdir().unwrap();
+        let source = temp.path().join("source.mp4");
+        let destination = temp.path().join("destination.mp4");
+        std::fs::write(&source, b"video").unwrap();
+
+        assert_eq!(
+            install_download(&source, &destination).unwrap(),
+            destination
+        );
+        assert_eq!(std::fs::read(&destination).unwrap(), b"video");
+        assert!(!source.exists());
     }
 }

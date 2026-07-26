@@ -7,8 +7,9 @@ export const useSearchYoutubeMutation = () => {
   return useMutation({
     mutationKey: YOUTUBE_SEARCH,
     mutationFn: (query: string) => searchYoutubeSongs(query),
-    onError: (error: Error) => {
-      toast.error(`Error searching YouTube: ${error.message}`);
+    onError: (error: unknown) => {
+      const message = error instanceof Error ? error.message : String(error);
+      toast.error(`Error searching YouTube: ${message}`);
     },
   });
 };

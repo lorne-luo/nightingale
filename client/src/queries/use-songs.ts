@@ -3,7 +3,7 @@ import { ANALYSIS_QUEUE, SONGS, SONGS_META, MENU } from "./keys";
 import { getPreloadedSongsMeta, loadAnalysisQueue, loadSongs, loadSongsMeta } from "@/bridge/songs";
 import { useLibraryFilter } from "@/hooks/use-library-filter";
 import { useSearch } from "@/hooks/use-search";
-import { useRef, useState } from "react";
+import { useRef } from "react";
 import type { AnalysisQueue } from "@/types/AnalysisQueue";
 import type { LoadSongsParams } from "@/types/LoadSongsParams";
 import { SongsMeta } from "@/types/SongsMeta";
@@ -13,25 +13,36 @@ const DEFAULT_REFETCH_INTERVAL = 2500;
 
 export const useSongsMeta = () => {
   const queryClient = useQueryClient();
-  const [prevMatched, setPrevMatched] = useState(true);
   const preloaded = getPreloadedSongsMeta();
+  const previousMetaRef = useRef<SongsMeta | undefined>(preloaded);
+  const wasScanningRef = useRef(
+    preloaded !== undefined && preloaded.count !== preloaded.processed_count,
+  );
 
   return useQuery({
     queryKey: SONGS_META,
     queryFn: loadSongsMeta,
     refetchInterval: DEFAULT_REFETCH_INTERVAL,
     ...(preloaded !== undefined ? { initialData: preloaded } : {}),
-    onSuccess: ({ count, processed_count }: SongsMeta) => {
+    onSuccess: (meta: SongsMeta) => {
+      const { count, processed_count } = meta;
+      const previous = previousMetaRef.current;
+      const libraryChanged =
+        previous !== undefined &&
+        (previous.count !== meta.count ||
+          previous.processed_count !== meta.processed_count ||
+          previous.songs_count !== meta.songs_count ||
+          previous.videos_count !== meta.videos_count);
+      previousMetaRef.current = meta;
+
       if (count !== processed_count) {
-        setPrevMatched(false);
+        wasScanningRef.current = true;
         queryClient.invalidateQueries({ queryKey: SONGS });
         queryClient.invalidateQueries({ queryKey: MENU });
-      } else {
-        if (prevMatched === false) {
-          setPrevMatched(true);
-          queryClient.invalidateQueries({ queryKey: SONGS });
-          queryClient.invalidateQueries({ queryKey: MENU });
-        }
+      } else if (wasScanningRef.current || libraryChanged) {
+        wasScanningRef.current = false;
+        queryClient.invalidateQueries({ queryKey: SONGS });
+        queryClient.invalidateQueries({ queryKey: MENU });
       }
     },
   });

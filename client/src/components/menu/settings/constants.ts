@@ -38,6 +38,12 @@ export const ASR_ENGINES: SettingsOption[] = [
     description:
       "Much faster and produces its own word timings (skipping alignment), but only covers 25 European languages. Whisper takes over for anything else.",
   },
+  {
+    value: "groq",
+    label: "Groq Whisper API",
+    description:
+      "Uploads separated vocals to Groq for transcription. Requires GROQ_API_KEY in the app environment.",
+  },
 ];
 
 export const ALIGN_BACKENDS: SettingsOption[] = [
@@ -128,10 +134,10 @@ export const NAV = {
 
 // The Whisper-only "Model size" + "Beam Size" fields sit right after the
 // transcription model, so every later field shifts by two segments when
-// Parakeet hides them. Fields that aren't rendered map to -1 so focus rings
+// Non-Whisper engines hide them. Fields that aren't rendered map to -1 so focus rings
 // never match them.
-export function getAnalysisNav(isParakeet: boolean) {
-  return isParakeet
+export function getAnalysisNav(isNonWhisper: boolean) {
+  return isNonWhisper
     ? {
         separator: 1,
         asrEngine: 2,
@@ -154,12 +160,12 @@ export function getAnalysisNav(isParakeet: boolean) {
       };
 }
 
-export function getSettingsStops(tab: SettingsTab, isParakeet: boolean) {
+export function getSettingsStops(tab: SettingsTab, isNonWhisper: boolean) {
   if (tab === "general") {
     return [2, 2, 1, 1, 2, 1, 1, 2];
   }
 
-  return isParakeet
+  return isNonWhisper
     ? [2, 1, 1, 1, 2, 1, NUMBER_PICKER_SIZE, 2]
     : [2, 1, 1, 1, NUMBER_PICKER_SIZE, 1, 2, 1, NUMBER_PICKER_SIZE, 2];
 }

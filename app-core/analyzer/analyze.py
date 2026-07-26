@@ -44,8 +44,8 @@ def main():
     parser.add_argument("--batch-size", type=int, default=16, help="Batch size for transcription")
     parser.add_argument("--separator", default="karaoke", choices=["karaoke", "demucs"],
                         help="Stem separation method: karaoke (UVR, cleaner) or demucs (faster)")
-    parser.add_argument("--engine", default="whisper", choices=["whisper", "parakeet"],
-                        help="Transcription engine: whisper (default) or parakeet (NeMo on CUDA, ONNX elsewhere)")
+    parser.add_argument("--engine", default="whisper", choices=["whisper", "parakeet", "groq"],
+                        help="Transcription engine: whisper (default), parakeet, or Groq Whisper API")
     parser.add_argument("--align-backend", dest="align_backend", default="whisperx",
                         choices=["whisperx", "ctc", "qwen"],
                         help="Forced-alignment backend: whisperx (default, Python Viterbi), "

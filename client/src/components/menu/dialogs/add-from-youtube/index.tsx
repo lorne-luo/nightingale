@@ -24,18 +24,19 @@ type AddYoutubeTab = "search" | "paste";
 const isLikelyYoutubeUrl = (value: string): boolean => {
   try {
     const url = new URL(value.trim());
-    if (url.protocol !== "http:" && url.protocol !== "https:") {
+    if (url.protocol !== "https:") {
       return false;
     }
 
     const host = url.hostname.replace(/^www\./, "");
+    const validId = (id: string): boolean => /^[A-Za-z0-9_-]{11}$/.test(id);
     if (host === "youtu.be") {
       const id = url.pathname.slice(1).split(/[/?#]/)[0];
-      return id.length >= 11;
+      return validId(id);
     }
 
     if (host === "youtube.com" || host === "m.youtube.com" || host === "music.youtube.com") {
-      return url.pathname === "/watch" && (url.searchParams.get("v")?.length ?? 0) >= 11;
+      return url.pathname === "/watch" && validId(url.searchParams.get("v") ?? "");
     }
 
     return false;

@@ -127,7 +127,7 @@ def transcribe_or_align(
             pre_align_cleanup=pre_align_cleanup,
         )
 
-    if os.environ.get("GROQ_API_KEY"):
+    if engine == "groq":
         return transcribe_with_groq(vocals_path)
 
     return transcribe_vocals(
